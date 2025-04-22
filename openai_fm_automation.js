@@ -6,12 +6,70 @@
  * This script automates the usage of openai.fm to play long texts in chunks.
  * It splits the input text into chunks that don't exceed the character limit,
  * then sequentially plays each chunk using the website's play button.
+ * It ensures chunks end at paragraph or sentence boundaries when possible.
  */
 
 const { chromium } = require('playwright');
 const { splitText } = require('./text_splitter');
 const fs = require('fs');
 const path = require('path');
+
+/**
+ * Splits text into chunks at paragraph/sentence boundaries
+ * @param {string} text - Text to split
+ * @param {number} maxChars - Maximum characters per chunk
+ * @returns {string[]} Array of text chunks
+ */
+function splitTextAtBoundaries(text, maxChars = 999) {
+  if (text.length <= maxChars) {
+    return [text];
+  }
+
+  const chunks = [];
+  let remainingText = text;
+
+  while (remainingText.length > 0) {
+    let chunkEnd = maxChars;
+
+    if (remainingText.length <= maxChars) {
+      chunks.push(remainingText);
+      break;
+    }
+
+    // Try to find paragraph break first
+    let paragraphEnd = remainingText.substring(0, maxChars).lastIndexOf('\n\n');
+    
+    // If no paragraph break, try to find sentence end
+    let sentenceEnd = -1;
+    if (paragraphEnd === -1) {
+      const sentenceEndings = ['. ', '! ', '? '];
+      sentenceEnd = Math.max(...sentenceEndings.map(ending => 
+        remainingText.substring(0, maxChars).lastIndexOf(ending)
+      ));
+    }
+
+    // If neither found, find last space
+    if (paragraphEnd === -1 && sentenceEnd === -1) {
+      while (chunkEnd > 0 && remainingText[chunkEnd] !== ' ') {
+        chunkEnd--;
+      }
+      
+      // If no space found, force split at max chars
+      if (chunkEnd === 0) {
+        chunkEnd = maxChars;
+      }
+    } else {
+      // Use paragraph end if found, otherwise sentence end
+      chunkEnd = paragraphEnd !== -1 ? paragraphEnd + 2 : sentenceEnd + 2;
+    }
+
+    const chunk = remainingText.substring(0, chunkEnd).trim();
+    chunks.push(chunk);
+    remainingText = remainingText.substring(chunkEnd).trim();
+  }
+
+  return chunks;
+}
 
 /**
  * Main function to automate openai.fm text-to-speech
@@ -23,8 +81,8 @@ async function automateOpenAIFM(text, options = {}) {
   
   console.log('Starting OpenAI.fm automation...');
   
-  // Split text into chunks
-  const chunks = splitText(text);
+  // Split text into chunks at natural boundaries
+  const chunks = splitTextAtBoundaries(text);
   console.log(`Split text into ${chunks.length} chunks`);
   
   // Launch browser
