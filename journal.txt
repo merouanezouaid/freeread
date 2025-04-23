@@ -6,7 +6,13 @@ it takes long text, splits it smartly, and reads it out loud using openai.fm.
 
 that’s it.
 
-i built it because i got tired of copying huge text into tts tools that either cut me off at 999 characters, try to charge me for 5 seconds of playing, or just froze. so i made something that handles that for me — splits cleanly, plays each chunk, and optionally gives me a full audio file to save later.
+i built it because i got tired of copying huge text into tts tools that either cut me off at 999 characters, 
+
+try to charge me for 5 seconds of playing, 
+
+or just froze. 
+
+so i made something that handles that for me — splits cleanly, plays each chunk, and optionally gives me a full audio file to save later.
 
 i like building tools like this — tiny things that solve one specific pain. not shiny. just helpful.
 
