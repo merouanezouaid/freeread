@@ -1,7 +1,7 @@
 # FreeRead
 
 FreeRead is a command-line tool that reads long pieces of text out loud using OpenAI.fm.
-It takes your input — whether it's a sentence or an entire essay — and turns it into a clean audio playback, chunk by chunk.
+It takes your input: a sentence or an entire essay, and turns it into a clean audio playback, chunk by chunk.
 
 No more character limit errors. No more awkward copy-pasting. Just plug in your text and let FreeRead handle the rest.
 
