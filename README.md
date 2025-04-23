@@ -5,6 +5,8 @@ It takes your input: a sentence or an entire essay, and turns it into a clean au
 
 No more character limit errors. No more awkward copy-pasting. Just plug in your text and let FreeRead handle the rest.
 
+(integrated in freewrite windows version soon)
+
 ![demo](demo.gif)
 
 ## Features
