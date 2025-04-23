@@ -1,58 +1,25 @@
-i stopped being a bookaholic like I used to three years ago.
+hey.
 
-my excuses were the usual:
+i’m kaito. i made this thing called FreeRead.
 
-too busy to sit down with a good story
-eye strain from staring at a computer screen trying to read PDFs (i still struggle with this when i try to read papers plz help)
-sometimes i even blame covid vaccine for messing with my focus
-u know how you just spit out reasons to dodge what you used to love? that was just me, making a little excuse fort to hide in.
+it takes long text, splits it smartly, and reads it out loud using openai.fm.
 
-it's not that i wasn't reading anything -- but i wasn't reading enough.
+that’s it.
 
-last week, my homie slid me his old Kobo Glo e-reader.
+i built it because i got tired of copying huge text into tts tools that either cut me off at 999 characters, try to charge me for 5 seconds of playing, or just froze. so i made something that handles that for me — splits cleanly, plays each chunk, and optionally gives me a full audio file to save later.
 
-that thing killed every excuse I had.
+i like building tools like this — tiny things that solve one specific pain. not shiny. just helpful.
 
-after using it for a week now, i feel like a new man.
+sometimes you wanna listen instead of read. maybe you're tired of coding all day. or you just process better through sound.
 
-i also didn't code that weekend, and spent the time just reading.
+this thing helps with that.
 
-tkhyel meaya everything i said before just sounded dumb once I was actually turning pages again.
+freewrite helped me so much with writing (shoutout to farza).
 
-now i’m back at it, actually enjoying reading again.
+and i think freeread will help with reading and listening.
 
-started with some fiction and thrillers in arabic and english..
+that’s all. if it helps you too, amazing.
 
-i’ve also been digging into more technical books (not ai related)
+if not, that’s fine. i’ll keep making weird little stuff anyway.
 
-WARNING: it's not because some gadget waved a magic wand.
-
-it's also not because an e-reader is all you need.
-
-an act was all i needed (and definitely all you need)
-
-my goal from this whole reading is to understand stuff that makes you think differently, and builds you up a little f other domains you're not even aware of..
-
-basically: polymath is the goal.
-
-the most ambitious ppl are the ones who are "curious", aka polymath.
-
-i’m not there yet, but i’m moving.
-
-and in my case, reading will definitely help..
-
-it's kinda relative i would say..
-
-ambition looks different depending on where you’re standing.
-
-for some, it’s building a nuclear reactor in a bedroom; for others, it’s figuring out how to live a life that doesn’t feel like a treadmill.
-
-what's interesting is: sometimes you don’t realize how much you miss something til it lands back in your lap.
-
-life’s too short to let good things slip away behind weak excuses.
-
-note to self 3wtani:
-
-find out what you love (or used to love) and make it work again. that’s it.
-
-
+aight bye.
