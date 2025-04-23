@@ -2,7 +2,7 @@ hey.
 
 i’m kaito. i made this thing called FreeRead.
 
-it takes long text, splits it smartly, and reads it out loud using openai.fm.
+it takes your long journal, splits it smartly, and reads it out loud using openai.fm.
 
 that’s it.
 
