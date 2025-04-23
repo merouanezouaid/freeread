@@ -13,6 +13,30 @@ const { chromium } = require('playwright');
 const { splitText } = require('./text_splitter');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
+const { exec } = require('child_process');
+
+/**
+ * Downloads audio from OpenAI.fm API URL
+ * @param {string} url - The API URL to download from
+ * @param {string} outputPath - Path to save the audio file
+ * @returns {Promise} Promise that resolves when download completes
+ */
+function downloadAudio(url, outputPath) {
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(outputPath);
+    https.get(url, (response) => {
+      response.pipe(file);
+      file.on('finish', () => {
+        file.close();
+        resolve();
+      });
+    }).on('error', (err) => {
+      fs.unlink(outputPath);
+      reject(err);
+    });
+  });
+}
 
 /**
  * Splits text into chunks at paragraph/sentence boundaries
@@ -77,7 +101,7 @@ function splitTextAtBoundaries(text, maxChars = 999) {
  * @param {Object} options - Configuration options
  */
 async function automateOpenAIFM(text, options = {}) {
-  const { headless = false, voice = 'Coral', vibe = 'Calm' } = options;
+  const { headless = false, voice = 'Coral', vibe = 'Calm', download = false } = options;
   
   console.log('Starting OpenAI.fm automation...');
   
@@ -89,6 +113,9 @@ async function automateOpenAIFM(text, options = {}) {
   const browser = await chromium.launch({ headless });
   const context = await browser.newContext();
   const page = await context.newPage();
+  
+  const audioUrls = [];
+  const downloadedFilePaths = [];
   
   try {
     // Navigate to openai.fm
@@ -119,7 +146,7 @@ async function automateOpenAIFM(text, options = {}) {
         await vibeTextArea.fill(customVibe);
       }
     }
-    
+
     // Process each chunk
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i];
@@ -130,28 +157,121 @@ async function automateOpenAIFM(text, options = {}) {
       await textArea.click();
       await textArea.fill(chunk);
       
+      // Add listeners to log requests
+      console.log('Setting up network listeners...');
+      const requestListener = request => console.log(`>> Request: ${request.method()} ${request.url()}`);
+      const responseListener = response => console.log(`<< Response: ${response.status()} ${response.url()}`);
+      page.on('request', requestListener);
+      page.on('response', responseListener);
+
       // Click play button
       console.log('Playing audio...');
       const playButton = page.locator('div[role="button"]:has(span:text-is("Play"))').first();
+      // Start waiting for the request *before* clicking
+      const apiRequestPromise = page.waitForRequest(request => 
+        request.url().startsWith('https://www.openai.fm/api/generate'),
+        { timeout: 60000 }
+      );
       await playButton.click();
-      
+
+      // Capture API request URL
+      try {
+        const apiRequest = await apiRequestPromise;
+        console.log(`Captured API request: ${apiRequest.url()}`);
+        audioUrls.push(apiRequest.url());
+      } catch (e) {
+        console.error(`Failed to capture API request for chunk ${i + 1}:`, e);
+      } finally {
+         // Remove listeners
+         console.log('Removing network listeners...');
+         page.off('request', requestListener);
+         page.off('response', responseListener);
+      }
+
       // Wait for the play button to change to stop
-      await page.locator('div[role="button"]:has(span:text-is("Stop"))').first().waitFor();
+      console.log('Waiting for Stop button...');
+      await page.locator('div[role="button"]:has(span:text-is("Stop"))').first().waitFor({ timeout: 60000 });
+      console.log('Stop button appeared.');
       
       // Wait for audio to finish (button changes back to "Play")
-      console.log('Waiting for audio to complete...');
-      await page.locator('div[role="button"]:has(span:text-is("Play"))').first().waitFor({ timeout: 120000 }); // 2 minute timeout
-      
+      console.log('Waiting for audio to complete (Play button)...');
+      await page.locator('div[role="button"]:has(span:text-is("Play"))').first().waitFor({ timeout: 180000 });
+      console.log('Play button reappeared.');
+
       console.log(`Chunk ${i + 1} completed`);
     }
-    
-    console.log('\nAll chunks processed successfully!');
+
+    console.log('\nAll chunks processed.');
+
+    // Download audio files if requested
+    if (download && audioUrls.length > 0) {
+      console.log('\nDownloading audio files...');
+      for (let i = 0; i < audioUrls.length; i++) {
+        try {
+          const outputPath = path.resolve(`chunk_${i + 1}.mp3`);
+          await downloadAudio(audioUrls[i], outputPath);
+          console.log(`Downloaded chunk ${i + 1} to ${outputPath}`);
+          downloadedFilePaths.push(outputPath);
+        } catch (downloadError) {
+           console.error(`Failed to download chunk ${i + 1} from ${audioUrls[i]}:`, downloadError);
+        }
+      }
+
+      // Combine downloaded files if any were successful
+      if (downloadedFilePaths.length > 0) {
+        console.log('\nCombining downloaded MP3 files...');
+        const outputCombinedFile = path.resolve('combined_output.mp3');
+        const ffmpegInput = downloadedFilePaths.map(p => `${p.replace(/\\/g, '/')}`).join('|');
+        const command = `ffmpeg -i "concat:${ffmpegInput}" -c copy "${outputCombinedFile}"`;
+
+        console.log(`Executing: ${command}`);
+
+        const execPromise = new Promise((resolve, reject) => {
+          exec(command, (error, stdout, stderr) => {
+            if (error) {
+              console.error(`ffmpeg error: ${error.message}`);
+              console.error(`ffmpeg stderr: ${stderr}`);
+              reject(error);
+              return;
+            }
+            console.log(`ffmpeg stdout: ${stdout}`);
+            console.log(`Successfully combined files into ${outputCombinedFile}`);
+            resolve();
+          });
+        });
+
+        try {
+          await execPromise;
+
+          // Optional: Clean up individual chunk files
+          console.log('Cleaning up chunk files...');
+          for (const filePath of downloadedFilePaths) {
+             try {
+               fs.unlinkSync(filePath);
+               console.log(`Deleted ${filePath}`);
+             } catch (unlinkError) {
+               console.error(`Failed to delete ${filePath}:`, unlinkError)
+             }
+          }
+        } catch (combineError) {
+          console.error('Failed to combine audio files.');
+        }
+      } else {
+        console.log('No files were successfully downloaded to combine.');
+      }
+    } else if (download) {
+        console.log('\nDownload requested, but no audio URLs were captured.');
+    }
+
+    console.log('\nAutomation finished successfully!');
     
   } catch (error) {
     console.error('Error during automation:', error);
   } finally {
     // Close browser
-    await browser.close();
+    if (browser) {
+       await browser.close();
+    }
   }
 }
 
@@ -169,12 +289,14 @@ Options:
   --headless, -h   Run in headless mode (no browser UI)
   --voice, -v      Specify the voice to use (default: Coral)
   --vibe, -b       Specify the vibe to use (default: Calm)
+  --download, -d   Download audio files instead of playing
   --help           Show this help message
 
 Examples:
   node openai_fm_automation.js "This is the text to convert to speech"
   node openai_fm_automation.js -f path/to/text/file.txt
   node openai_fm_automation.js -v "Echo" -b "Friendly" "This is the text to convert"
+  node openai_fm_automation.js -d -f journal.txt
     `);
     process.exit(0);
   }
@@ -196,12 +318,14 @@ Options:
   --headless, -h   Run in headless mode (no browser UI)
   --voice, -v      Specify the voice to use (default: Coral)
   --vibe, -b       Specify the vibe to use (default: Calm)
+  --download, -d   Download audio files instead of playing
   --help           Show this help message
 
 Examples:
   node openai_fm_automation.js "This is the text to convert to speech"
   node openai_fm_automation.js -f path/to/text/file.txt
   node openai_fm_automation.js -v "Echo" -b "Friendly" "This is the text to convert"
+  node openai_fm_automation.js -d -f journal.txt
       `);
       process.exit(0);
     } else if (arg === '--file' || arg === '-f') {
@@ -212,6 +336,8 @@ Examples:
       options.voice = args[++i];
     } else if (arg === '--vibe' || arg === '-b') {
       options.vibe = args[++i];
+    } else if (arg === '--download' || arg === '-d') {
+      options.download = true;
     } else {
       inputText = arg;
     }
