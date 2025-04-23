@@ -1,6 +1,6 @@
-# OpenAI.fm Automation Script
+# FreeRead
 
-This script automates the usage of [OpenAI.fm](https://www.openai.fm/) to play long texts in chunks. It splits the input text into chunks that don't exceed the character limit, then sequentially plays each chunk using the website's play button.
+This script automates the usage of web-based TTS services to read long texts in chunks. It splits the input text into chunks that don't exceed character limits, then sequentially processes each chunk.
 
 ## Features
 
@@ -19,41 +19,53 @@ This script automates the usage of [OpenAI.fm](https://www.openai.fm/) to play l
 
 ## Installation
 
-1. Clone or download this repository
-2. Install dependencies:
-
-```bash
-npm install
-```
+1.  **Prerequisites:**
+    *   Node.js (which includes npm) installed.
+    *   `ffmpeg` installed and accessible in your system's PATH (required only for the `--download` option with MP3 merging). Download from [ffmpeg.org](https://ffmpeg.org/download.html).
+2.  **Install the package:**
+    *   **From local source:** If you have cloned the repository, navigate to the project directory in your terminal and run:
+        ```bash
+        npm install -g .
+        ```
+    *   **(Optional) From npm (if published):** If this package were published to the npm registry under the name `freeread`, you would install it using:
+        ```bash
+        npm install -g freeread
+        ```
 
 ## Usage
 
+Once installed globally, you can run the command `freeread` from any directory:
+
 ```bash
-node openai_fm_automation.js [options] <text or file path>
+freeread [options] <text or file path>
 ```
 
 ### Options
 
 - `--file, -f`: Treat the input as a file path instead of direct text
 - `--headless, -h`: Run in headless mode (no browser UI)
-- `--voice, -v`: Specify the voice to use (default: NYC Cabbie)
+- `--voice, -v`: Specify the voice to use (default: Coral)
 - `--vibe, -b`: Specify the vibe to use (default: Calm)
+- `--download, -d`: Download audio chunks and combine them into `combined_output.mp3` (requires ffmpeg). If not used, audio is played directly.
 - `--help`: Show help message
 
 ### Examples
 
 ```bash
-# Convert direct text to speech
-node openai_fm_automation.js "This is the text to convert to speech"
+# Convert direct text to speech and play it
+freeread "This is the text to convert to speech"
 
-# Convert text from a file
-node openai_fm_automation.js -f path/to/text/file.txt
+# Convert text from a file and play it
+freeread -f path/to/text/file.txt
 
-# Specify voice and vibe
-node openai_fm_automation.js -v "Echo" -b "Friendly" "This is the text to convert"
+# Specify voice and vibe, play the audio
+freeread -v "Echo" -b "Friendly" "This is the text to convert"
 
-# Run in headless mode
-node openai_fm_automation.js -h -f path/to/text/file.txt
+# Convert text from a file, download chunks, and combine to a timestamped mp3
+freeread -d -f path/to/text/file.txt
+
+# Run headless, download and combine audio from a file
+freeread -h -d -f path/to/text/file.txt
 ```
 
 ## How It Works

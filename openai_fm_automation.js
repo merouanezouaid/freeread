@@ -101,23 +101,57 @@ function splitTextAtBoundaries(text, maxChars = 999) {
  * @param {Object} options - Configuration options
  */
 async function automateOpenAIFM(text, options = {}) {
-  const { headless = false, voice = 'Coral', vibe = 'Calm', download = false } = options;
+  const { headless = false, voice = 'Coral', vibe = 'Calm', download = false, inputFile = null } = options;
   
   console.log('Starting OpenAI.fm automation...');
   
-  // Split text into chunks at natural boundaries
+  // --- Create unique output directory name ---
+  let outputDir = null; // Initialize outputDir
+  let baseName = 'text_input';
+  let timestamp = '';
+
+  if (download) {
+    // Generate timestamp
+    const now = new Date();
+    timestamp = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}_${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}`;
+
+    // Determine base name
+    if (inputFile) {
+      baseName = path.basename(inputFile, path.extname(inputFile));
+    }
+    // Create unique output directory path
+    outputDir = path.resolve(`openai-fm-output_${baseName}_${timestamp}`);
+  }
+  // --- End output directory name creation ---
+
+  // Split text into chunks
   const chunks = splitTextAtBoundaries(text);
   console.log(`Split text into ${chunks.length} chunks`);
   
   // Launch browser
-  const browser = await chromium.launch({ headless });
-  const context = await browser.newContext();
-  const page = await context.newPage();
-  
-  const audioUrls = [];
-  const downloadedFilePaths = [];
-  
+  let browser; // Define browser outside try block for finally
   try {
+    browser = await chromium.launch({ headless });
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    
+    const audioUrls = [];
+    const downloadedFilePaths = [];
+
+    // --- Create Output Directory on Filesystem ---
+    if (download && outputDir) {
+      try {
+          if (!fs.existsSync(outputDir)) {
+              fs.mkdirSync(outputDir, { recursive: true });
+              console.log(`Created output directory: ${outputDir}`);
+          }
+      } catch (mkdirError) {
+          console.error(`Error creating output directory: ${mkdirError}`);
+          throw new Error(`Failed to create output directory: ${mkdirError.message}`);
+      }
+    }
+    // --- End directory creation ---
+    
     // Navigate to openai.fm
     console.log('Navigating to openai.fm...');
     await page.goto('https://www.openai.fm/');
@@ -204,14 +238,15 @@ async function automateOpenAIFM(text, options = {}) {
     console.log('\nAll chunks processed.');
 
     // Download audio files if requested
-    if (download && audioUrls.length > 0) {
-      console.log('\nDownloading audio files...');
+    if (download && audioUrls.length > 0 && outputDir) { // Ensure outputDir exists
+      console.log(`\nDownloading audio files to ${outputDir}...`);
       for (let i = 0; i < audioUrls.length; i++) {
         try {
-          const outputPath = path.resolve(`chunk_${i + 1}.mp3`);
+          // Use path.join to put chunks inside the outputDir
+          const outputPath = path.join(outputDir, `chunk_${i + 1}.mp3`); 
           await downloadAudio(audioUrls[i], outputPath);
           console.log(`Downloaded chunk ${i + 1} to ${outputPath}`);
-          downloadedFilePaths.push(outputPath);
+          downloadedFilePaths.push(outputPath); 
         } catch (downloadError) {
            console.error(`Failed to download chunk ${i + 1} from ${audioUrls[i]}:`, downloadError);
         }
@@ -220,7 +255,8 @@ async function automateOpenAIFM(text, options = {}) {
       // Combine downloaded files if any were successful
       if (downloadedFilePaths.length > 0) {
         console.log('\nCombining downloaded MP3 files...');
-        const outputCombinedFile = path.resolve('combined_output.mp3');
+        // Final combined file inside outputDir with descriptive name
+        const outputCombinedFile = path.join(outputDir, `${baseName}_${timestamp}.mp3`); 
         const ffmpegInput = downloadedFilePaths.map(p => `${p.replace(/\\/g, '/')}`).join('|');
         const command = `ffmpeg -i "concat:${ffmpegInput}" -c copy "${outputCombinedFile}"`;
 
@@ -235,7 +271,7 @@ async function automateOpenAIFM(text, options = {}) {
               return;
             }
             console.log(`ffmpeg stdout: ${stdout}`);
-            console.log(`Successfully combined files into ${outputCombinedFile}`);
+            console.log(`Successfully combined files into ${outputCombinedFile}`); // Log correct path
             resolve();
           });
         });
@@ -259,8 +295,10 @@ async function automateOpenAIFM(text, options = {}) {
       } else {
         console.log('No files were successfully downloaded to combine.');
       }
-    } else if (download) {
+    } else if (download && outputDir) {
         console.log('\nDownload requested, but no audio URLs were captured.');
+    } else if (download) {
+        console.log('\nDownload requested, but failed to prepare output directory.')
     }
 
     console.log('\nAutomation finished successfully!');
@@ -282,7 +320,7 @@ if (require.main === module) {
   // Show usage if no arguments provided
   if (args.length === 0) {
     console.log(`
-Usage: node openai_fm_automation.js [options] <text or file path>
+Usage: freeread [options] <text or file path>
 
 Options:
   --file, -f       Treat the input as a file path instead of direct text
@@ -293,17 +331,23 @@ Options:
   --help           Show this help message
 
 Examples:
-  node openai_fm_automation.js "This is the text to convert to speech"
-  node openai_fm_automation.js -f path/to/text/file.txt
-  node openai_fm_automation.js -v "Echo" -b "Friendly" "This is the text to convert"
-  node openai_fm_automation.js -d -f journal.txt
+  freeread "This is the text to convert to speech"
+  freeread -f path/to/text/file.txt
+  freeread -v "Echo" -b "Friendly" "This is the text to convert"
+  freeread -d -f journal.txt
     `);
     process.exit(0);
   }
   
   // Parse arguments
   let inputText = '';
-  const options = {};
+  const options = { // Initialize options object
+    headless: false,
+    voice: 'Coral',
+    vibe: 'Calm',
+    download: false,
+    inputFile: null // Initialize inputFile
+  };
   let isFile = false;
   
   for (let i = 0; i < args.length; i++) {
@@ -311,7 +355,7 @@ Examples:
     
     if (arg === '--help') {
       console.log(`
-Usage: node openai_fm_automation.js [options] <text or file path>
+Usage: freeread [options] <text or file path>
 
 Options:
   --file, -f       Treat the input as a file path instead of direct text
@@ -322,10 +366,10 @@ Options:
   --help           Show this help message
 
 Examples:
-  node openai_fm_automation.js "This is the text to convert to speech"
-  node openai_fm_automation.js -f path/to/text/file.txt
-  node openai_fm_automation.js -v "Echo" -b "Friendly" "This is the text to convert"
-  node openai_fm_automation.js -d -f journal.txt
+  freeread "This is the text to convert to speech"
+  freeread -f path/to/text/file.txt
+  freeread -v "Echo" -b "Friendly" "This is the text to convert"
+  freeread -d -f journal.txt
       `);
       process.exit(0);
     } else if (arg === '--file' || arg === '-f') {
@@ -339,15 +383,16 @@ Examples:
     } else if (arg === '--download' || arg === '-d') {
       options.download = true;
     } else {
-      inputText = arg;
+      inputText = arg; // Temporarily stores file path if -f is used
     }
   }
   
   // Read from file if specified
   if (isFile) {
     try {
-      const filePath = path.resolve(inputText);
-      inputText = fs.readFileSync(filePath, 'utf8');
+      const filePath = path.resolve(inputText); // inputText is the path here
+      options.inputFile = filePath; // <<<< Store original file path in options
+      inputText = fs.readFileSync(filePath, 'utf8'); // Now inputText is the content
       console.log(`Read ${inputText.length} characters from file: ${filePath}`);
     } catch (error) {
       console.error(`Error reading file: ${error.message}`);
@@ -357,12 +402,12 @@ Examples:
   
   // Run automation
   if (inputText) {
-    automateOpenAIFM(inputText, options).catch(error => {
+    automateOpenAIFM(inputText, options).catch(error => { // Pass options object
       console.error('Automation failed:', error);
       process.exit(1);
     });
   } else {
-    console.error('No input text provided. Use --help for usage information.');
+    console.error('No input text or file path provided. Use --help for usage information.');
     process.exit(1);
   }
 }
