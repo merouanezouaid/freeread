@@ -81,7 +81,7 @@ freeread -h -d -f path/to/text/file.txt
 
 ## Files
 
-- `openai_fm_automation.js`: Main script file
+- `freeread.js`: Main script file
 - `text_splitter.js`: Module for splitting text into chunks
 
 ## License

@@ -359,7 +359,7 @@ Usage: freeread [options] <text or file path>
 
 Options:
   --file, -f       Treat the input as a file path instead of direct text
-  --headless, -h   Run in headless mode (no browser UI)
+  --headless, -h   Run in headless mode (not working atm)
   --voice, -v      Specify the voice to use (default: Coral)
   --vibe, -b       Specify the vibe to use (default: Calm)
   --download, -d   Download audio files instead of playing

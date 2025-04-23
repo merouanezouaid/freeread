@@ -2,9 +2,9 @@
     "name": "freeread",
     "version": "0.1.0",
     "description": "Automates web-based text-to-speech services like OpenAI.fm for long texts, handling chunking and playback/download.",
-    "main": "openai_fm_automation.js",
+    "main": "freeread.js",
     "bin": {
-      "freeread": "openai_fm_automation.js"
+      "freeread": "freeread.js"
     },
     "scripts": {
       "test": "echo \"Error: no test specified\" && exit 1"
